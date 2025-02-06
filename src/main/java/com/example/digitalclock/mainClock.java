@@ -18,7 +18,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
-public class HelloApplication extends Application {
+public class mainClock extends Application {
     private Label clockLabel;
     private SimpleDateFormat sdf;
     private Map<String, String> timeZones; // Mapa para almacenar las zonas horarias
