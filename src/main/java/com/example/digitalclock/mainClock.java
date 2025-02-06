@@ -10,10 +10,7 @@ import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
-import javafx.scene.control.Menu;
-import javafx.scene.control.MenuBar;
-import javafx.scene.control.MenuItem;
+import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 import javafx.util.Duration;
@@ -42,24 +39,26 @@ public class mainClock extends Application {
         // Crear la raíz con BorderPane
         BorderPane root = new BorderPane(clockLabel);
 
-        // Crear la barra de menú
-        MenuBar menuBar = new MenuBar();
+        // Crear el botón de tres rayas (hamburger button)
+        Button hamburgerButton = new Button("☰");  // Símbolo de tres rayas (hamburger)
+        hamburgerButton.getStyleClass().add("hamburger-button");
 
-        // Crear un menú con opciones
-        Menu menu = new Menu("Opciones");
+        // Crear el ContextMenu
+        ContextMenu contextMenu = new ContextMenu();
 
         // Crear los MenuItems dinámicamente
         for (Map.Entry<String, String> entry : timeZones.entrySet()) {
             MenuItem item = new MenuItem(entry.getKey());
             item.setOnAction(event -> changeTimeZone(entry.getValue())); // Cambiar zona horaria
-            menu.getItems().add(item);
+            contextMenu.getItems().add(item);
         }
 
-        // Añadir el menú a la barra de menú
-        menuBar.getMenus().add(menu);
+        // Cuando se haga clic en el botón de tres rayas, mostrar el ContextMenu
+        hamburgerButton.setOnAction(event -> contextMenu.show(hamburgerButton, javafx.geometry.Side.BOTTOM, 0, 0));
+
 
         // Colocar el menuBar en la parte superior del BorderPane
-        root.setTop(menuBar);
+        root.setTop(hamburgerButton);
 
         // Crear la escena y aplicar el estilo CSS
         Scene scene = new Scene(root, 300, 150);
