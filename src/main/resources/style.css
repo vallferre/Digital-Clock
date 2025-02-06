@@ -1,0 +1,11 @@
+.clock-label{
+    -fx-font-size: 40px;
+    -fx-font-family: "Courier New";
+    -fx-text-fill: white;
+    -fx-background-color: black;
+    -fx-padding: 10px;
+}
+
+.root{
+    -fx-background-color: black;
+}
