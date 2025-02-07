@@ -1,81 +1,87 @@
 package com.example.digitalclock;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.TimeZone;
-
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Application;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
+
 public class mainClock extends Application {
     private Label clockLabel;
-    private SimpleDateFormat sdf;
-    private Map<String, String> timeZones; // Mapa para almacenar las zonas horarias
+    private Label locationLabel;
+    private DateTimeFormatter formatter;
+    private ZoneId currentZone = ZoneId.of("UTC");
+    private ObservableList<String> timeZones;
+    private ComboBox<String> timeZoneComboBox;
 
     @Override
     public void start(Stage primaryStage) {
         clockLabel = new Label();
         clockLabel.getStyleClass().add("clock-label");
 
-        // Inicializar el SimpleDateFormat aquí
-        sdf = new SimpleDateFormat("HH:mm:ss");
-        sdf.setTimeZone(TimeZone.getTimeZone("UTC")); // Inicializar con UTC
+        locationLabel = new Label("Zona horaria: UTC");
+        locationLabel.getStyleClass().add("location-label");
 
-        // Inicializar el mapa de zonas horarias
-        timeZones = new HashMap<>();
-        timeZones.put("Buenos Aires - UTC-3", "GMT-3");
-        // Puedes seguir añadiendo más zonas horarias aquí
-        timeZones.put("New York - UTC-5", "GMT-5");
-        timeZones.put("London - UTC", "UTC");
+        formatter = DateTimeFormatter.ofPattern("HH:mm:ss").withZone(currentZone);
 
-        // Crear la raíz con BorderPane
-        BorderPane root = new BorderPane(clockLabel);
+        timeZones = FXCollections.observableArrayList(getFormattedTimeZones());
 
-        // Crear el botón de tres rayas (hamburger button)
-        Button hamburgerButton = new Button("☰");  // Símbolo de tres rayas (hamburger)
-        hamburgerButton.getStyleClass().add("hamburger-button");
+        timeZoneComboBox = new ComboBox<>();
+        timeZoneComboBox.setEditable(true);
+        timeZoneComboBox.setItems(timeZones);
+        timeZoneComboBox.getEditor().setPromptText("Seleccione un horario");
 
-        // Crear el ContextMenu
-        ContextMenu contextMenu = new ContextMenu();
+        timeZoneComboBox.getEditor().textProperty().addListener((obs, oldValue, newValue) -> {
+            if (newValue.isEmpty()) {
+                timeZoneComboBox.getEditor().setPromptText("Seleccione un horario");
+            } else {
+                filterTimeZones(newValue);
+            }
+        });
 
-        // Crear los MenuItems dinámicamente
-        for (Map.Entry<String, String> entry : timeZones.entrySet()) {
-            MenuItem item = new MenuItem(entry.getKey());
-            item.setOnAction(event -> changeTimeZone(entry.getValue())); // Cambiar zona horaria
-            contextMenu.getItems().add(item);
-        }
+        timeZoneComboBox.setOnAction(event -> {
+            String selectedZone = timeZoneComboBox.getValue();
+            if (selectedZone != null && timeZones.contains(selectedZone)) {
+                String zoneId = selectedZone.substring(selectedZone.indexOf(']') + 2);
+                changeTimeZone(zoneId);
+            }
+        });
 
-        // Cuando se haga clic en el botón de tres rayas, mostrar el ContextMenu
-        hamburgerButton.setOnAction(event -> contextMenu.show(hamburgerButton, javafx.geometry.Side.BOTTOM, 0, 0));
+        BorderPane root = new BorderPane();
+        VBox topBox = new VBox(timeZoneComboBox);
+        VBox centerBox = new VBox(clockLabel, locationLabel);
+        topBox.setPadding(new Insets(10));
+        centerBox.setPadding(new Insets(10));
+        root.setTop(topBox);
+        root.setCenter(centerBox);
 
-
-        // Colocar el menuBar en la parte superior del BorderPane
-        root.setTop(hamburgerButton);
-
-        // Crear la escena y aplicar el estilo CSS
-        Scene scene = new Scene(root, 300, 150);
+        Scene scene = new Scene(root, 350, 200);
         scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
 
-        // Configurar la ventana
         primaryStage.setTitle("Reloj Digital");
         primaryStage.setScene(scene);
         primaryStage.show();
 
-        // Iniciar el reloj
         startClock();
     }
 
     private void startClock() {
         Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
-            String currentTime = sdf.format(new Date());
+            String currentTime = formatter.format(Instant.now());
             clockLabel.setText(currentTime);
         }));
         timeline.setCycleCount(Timeline.INDEFINITE);
@@ -83,7 +89,46 @@ public class mainClock extends Application {
     }
 
     private void changeTimeZone(String timeZoneID) {
-        sdf.setTimeZone(TimeZone.getTimeZone(timeZoneID)); // Cambiar zona horaria
+        currentZone = ZoneId.of(timeZoneID);
+        formatter = DateTimeFormatter.ofPattern("HH:mm:ss").withZone(currentZone);
+
+        String location = formatLocation(timeZoneID);
+        locationLabel.setText("Zona horaria: " + location);
+    }
+
+    private List<String> getFormattedTimeZones() {
+        return ZoneId.getAvailableZoneIds().stream()
+                .sorted(Comparator.comparing(zone -> ZoneId.of(zone).getRules().getOffset(Instant.now())))
+                .map(zone -> {
+                    ZoneId z = ZoneId.of(zone);
+                    String offset = z.getRules().getOffset(Instant.now()).toString();
+                    return "[" + offset + "] " + zone;
+                })
+                .collect(Collectors.toList());
+    }
+
+    private void filterTimeZones(String search) {
+        ObservableList<String> filteredList = FXCollections.observableArrayList();
+
+        for (String zone : timeZones) {
+            if (zone.toLowerCase().contains(search.toLowerCase())) {
+                filteredList.add(zone);
+            }
+        }
+
+        timeZoneComboBox.setItems(filteredList);
+    }
+
+    private String formatLocation(String timeZoneID) {
+        String[] parts = timeZoneID.split("/");
+        if (parts.length == 1) {
+            return timeZoneID;
+        }
+
+        String formattedCity = parts[parts.length - 1].replace("_", " ");
+        String formattedCountry = parts[0].replace("_", " ");
+
+        return formattedCity + ", " + formattedCountry;
     }
 
     public static void main(String[] args) {
